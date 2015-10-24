@@ -10,9 +10,6 @@ import state
 import imp, sys
 import database
 
-def rel():
-	imp.reload(sys.modules['Pilot'])
-
 _deg2met = 110977.			# meters in one degree latitude
 
 class Pilot (Ckpt.Ckpt):			# subclass of the class Ckpt in the file Ckpt
@@ -35,6 +32,7 @@ class Pilot (Ckpt.Ckpt):			# subclass of the class Ckpt in the file Ckpt
 			self.dest_speed = flyData.kias
 			self.dest_altitude = flyData.altitude
 			self.dest_heading = flyData.head
+			self.currentAction = (0, 0)
 
 		if hasattr(self, 'center_point'):
 			self.trajecDiff = calculation.getTrajectoryDifference(flyData.latitude, flyData.longitude, self.center_point, self.dest_radius)
@@ -50,7 +48,8 @@ class Pilot (Ckpt.Ckpt):			# subclass of the class Ckpt in the file Ckpt
 			self.currentState = state.State(self.dest_radius, self.speedDiff, self.altitudeDiff, self.headingDiff, self.trajecDiff, self.db)
 
 			if hasattr(self, 'prevState') and self.prevState.isDifferent(self.currentState):
-				self.currentState.chooseAnAction()
+				self.prevState.recordAction(self.currentAction, str(self.currentState.objectID))
+				self.currentAction = self.currentState.chooseAnAction()
 				print("working")
 		# '''Override with the Pilot decision maker, args: fltData and cmdData from Utilities.py'''
 		# print("time : " , flyData.time)

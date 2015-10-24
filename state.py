@@ -28,8 +28,28 @@ class State:
         else:
             self.objectID = dbInfo["_id"]
 
+    def recordAction(self, action, nextStateID):
+        action = str(action[0]) + ","+ str(action[1])
+        diction = self.db.getStateDict(self.objectID)
+        if not "actions" in diction:
+            diction["actions"] = {action : {nextStateID: 1}}
+        else:
+            actions = diction["actions"]
+            if not action in actions:
+                actions[action] = {nextStateID: 1}
+            else:
+                theAction = actions[action]
+                if not nextStateID in theAction:
+                    theAction[nextStateID] = 1
+                else:
+                    theAction[nextStateID] = theAction[nextStateID] + 1
+        print(diction)
+        self.db.saveState(diction)
+
     def chooseAnAction(self):
         diction = self.db.getStateDict(self.objectID)
+        if not "actions" in diction:
+            return (0,0)
         print(diction)
 
     def calculateAward(self):
