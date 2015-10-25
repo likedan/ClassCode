@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 import database
+from random import randint
 
 class State:
+
     def __init__(self, radius, speedDif, altitudeDif, headingDif, trajectoryDif, database):
         self.db = database
 
@@ -28,29 +30,60 @@ class State:
         else:
             self.objectID = dbInfo["_id"]
 
-    def recordAction(self, action, nextStateID):
+    def recordAction(self, action, nextStateID, timeInPrevState):
         action = str(action[0]) + ","+ str(action[1])
         diction = self.db.getStateDict(self.objectID)
         if not "actions" in diction:
-            diction["actions"] = {action : {nextStateID: 1}}
+            diction["actions"] = {action : {nextStateID: [timeInPrevState]}}
         else:
             actions = diction["actions"]
             if not action in actions:
-                actions[action] = {nextStateID: 1}
+                actions[action] = {nextStateID: [timeInPrevState]}
             else:
                 theAction = actions[action]
                 if not nextStateID in theAction:
-                    theAction[nextStateID] = 1
+                    theAction[nextStateID] = [timeInPrevState]
                 else:
-                    theAction[nextStateID] = theAction[nextStateID] + 1
-        print(diction)
+                    theAction[nextStateID].append(timeInPrevState)
         self.db.saveState(diction)
+        print(nextStateID, " ," ,action ," recorded")
 
     def chooseAnAction(self):
         diction = self.db.getStateDict(self.objectID)
+        print(diction)
         if not "actions" in diction:
             return (0,0)
-        print(diction)
+        else:
+            dictionM = {}
+            for key in diction["actions"].keys():
+                keyArr = key.split(',')
+                dictionM[(int(keyArr[0]), int(keyArr[1]))] = diction["actions"][key]
+            return self.chooseActionFromPolicy(dictionM)
+
+    def chooseActionFromPolicy(self, diction):
+        throttle = randint(0, 5)
+        ruddle = randint(-5, 5)
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        # print(diction)
+        # while(throttle <= 5):
+        #     while (ruddle <= 5):
+        #         if (throttle, ruddle) in diction:
+        #             print ("inside")
+        #             resultStates = diction[(throttle, ruddle)].keys()
+        #             totalTry = 0
+        #             for state in resultStates:
+        #                 totalTry = totalTry + diction[(throttle, ruddle)][state]
+        #             if totalTry > 1:
+        #                 print ("lala")
+        #             else:
+        #                 return (throttle, ruddle)
+        #         else:
+        #             return (throttle, ruddle)
+        #         ruddle = ruddle + 1
+        #     throttle = throttle + 1
+
+        return (throttle, ruddle)
+
 
     def calculateAward(self):
         return 1 / self.speedDif + 1 / self.altitudeDif + 1 / self.headingDif  + 1 / self.trajectoryDif

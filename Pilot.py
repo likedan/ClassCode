@@ -1,14 +1,17 @@
 # Simple example of taxiing as scripted behavior
 # import Pilot; a=Pilot.Pilot(); a.start()
 import math
+from geopy import Point
 import calculation as calculation
 import Ckpt as Ckpt
 import Utilities as Utilities
-from PidController import PidController
-from geopy import Point
 import state
 import imp, sys
 import database
+import time
+import os
+import sys
+from subprocess import call
 
 _deg2met = 110977.			# meters in one degree latitude
 
@@ -17,6 +20,8 @@ class Pilot (Ckpt.Ckpt):			# subclass of the class Ckpt in the file Ckpt
 	def __init__(self, database):
 		super().__init__('HW4a', True, False)
 		self.db = database
+		self.stayTime = 0
+		print("new Pilot")
 
 	def setRadiusAndAngle(self, radius, angle):
 		self.dest_angle = angle
@@ -45,97 +50,25 @@ class Pilot (Ckpt.Ckpt):			# subclass of the class Ckpt in the file Ckpt
 			# print("altitude: ",self.altitudeDiff)
 			if hasattr(self, 'currentState'):
 				self.prevState = self.currentState
+				self.stayTime = self.stayTime + 1
+
+
 			self.currentState = state.State(self.dest_radius, self.speedDiff, self.altitudeDiff, self.headingDiff, self.trajecDiff, self.db)
-
 			if hasattr(self, 'prevState') and self.prevState.isDifferent(self.currentState):
-				self.prevState.recordAction(self.currentAction, str(self.currentState.objectID))
+				self.prevState.recordAction(self.currentAction, str(self.currentState.objectID), self.stayTime)
+				print("different State")
+				self.stayTime = 0
 				self.currentAction = self.currentState.chooseAnAction()
-				print("working")
-		# '''Override with the Pilot decision maker, args: fltData and cmdData from Utilities.py'''
-		# print("time : " , flyData.time)
-		# print("air speed : " , flyData.kias)
-		# print("altitude : " , flyData.altitude)
-		# print("head : " , flyData.head)
-		# print("pitch : " , flyData.pitch)
-		# print("roll : " , flyData.roll)
-		#
-		# print("running : ", flyData.running)
+				command.throttle = self.currentAction[0] / 5
+				command.rudder = self.currentAction[1] / 5
+			if abs(self.currentState.trajectoryDif) > 25 or abs(self.currentState.headingDif) > 25 or abs(self.currentState.altitudeDif) > 25 or abs(self.currentState.speedDif) > 25:
+				self.fg.exitFgfs()
+				os.environ['probe1'] = 'endblablabla'
+				os.system('echo $probe1')
+				call(["sudo", "killall", "Python"])
+				# os.kill(0, signal.SIGINT)
+				# bashCommand = "python start."
+				# process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+				# output = process.communicate()[0]
 
-#
-# 		currentTickLength = 0
-# 		if self.duration:
-# 			currentTickLength = flyData.time - self.strtTime - self.duration
-#
-# 		self.duration = flyData.time - self.strtTime
-# 		if abs(flyData.roll) > 5.:			# first check for excessive roll
-# 			print('Points lost for tipping; {:.1f} degrees at {:.1f} seconds'.format(flyData.roll, self.duration))
-#
-# 		if currentTickLength == 0:
-# 			return 'noop' # something dummy
-#
-# 		print('------------------------------------------------------')
-# 		print('Current time = {:.1f} seconds, actual = {:.1f} value'.format(self.duration, flyData.time))
-#
-# # speed calculation start
-# 		currentSpeed = 0
-# 		newLocation = [flyData.latitude, flyData.longitude]
-#
-# 		if self.lastKnownLocation:
-# 			currentSpeed = (_deg2met * Utilities.dist(self.lastKnownLocation, newLocation)) / currentTickLength
-#
-# 		self.lastKnownLocation = newLocation
-# # speed calculation end
-#
-# # angle calculation start
-# 		startLat = math.radians(newLocation[0])
-# 		startLong = math.radians(newLocation[1])
-# 		endLat = math.radians(self.waypoints[self.nextWayPointIndex][0])
-# 		endLong = math.radians(self.waypoints[self.nextWayPointIndex][1])
-#
-# 		dLong = endLong - startLong
-#
-# 		dPhi = math.log(math.tan(endLat/2.0+math.pi/4.0)/math.tan(startLat/2.0+math.pi/4.0))
-# 		if abs(dLong) > math.pi:
-# 			if dLong > 0.0:
-# 				dLong = -(2.0 * math.pi - dLong)
-# 			else:
-# 				dLong = (2.0 * math.pi + dLong)
-#
-# # problems here
-# 		bearing = (math.degrees(math.atan2(dLong, dPhi)) + 360.0) % 360.0
-# 		distanceFromNextWaypoint = Utilities.dist(self.lastKnownLocation, self.waypoints[self.nextWayPointIndex]) * _deg2met
-# 		print('Distance to next waypoint {:.5f} meters'.format(distanceFromNextWaypoint))
-#
-# # angle calculation end
-# 		if(distanceFromNextWaypoint < 50.):
-# 			self.throttlePidController.set_point = self.speedTurn
-# 		else:
-# 			self.throttlePidController.set_point = self.speedMax
-# 		pidValue = self.throttlePidController.calculatePid(currentSpeed)
-# 		print('Current {:.2f} / Expected {:.2f} / Throttle pidValue = {:.5f}'.format(currentSpeed, self.throttlePidController.set_point, pidValue))
-# 		command.throttle = (pidValue / self.throttlePidController.set_point)
-#
-# # rudder PidController start
-#
-# 		self.rudderPidController.set_point = bearing
-# 		rudderValue = self.rudderPidController.calculateAngelPid(flyData.head)
-#
-# 		if(rudderValue > 0.5):
-# 			command.rudder = 0.5
-# 		elif(rudderValue < -0.5):
-# 			command.rudder = -0.5
-# 		else:
-# 			command.rudder = rudderValue * 2
-# 		print('Heading {:.2f} / Waypoint {:.2f} / Rudder pidValue = {:.5f}'.format(flyData.head, bearing, command.rudder))
-# # rudder PidController end
-#
-# 		if (distanceFromNextWaypoint < 1.):
-# 			print("moving to next waypoint")
-# 			self.nextWayPointIndex += 1
-# 			#print(sf.nextWayPointIndex)
-# 			self.correctWay = False
-# 			self.throttlePidController = PidController(1, 0.001, 0.01)
-# 			self.rudderPidController = PidController(0.01, 0.0001, 0.001)
-#
-# 		if self.nextWayPointIndex == len(self.waypoints):
-# 			return 'stop'
+				# self.controller.startNewLearning()

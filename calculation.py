@@ -1,10 +1,9 @@
-
+import math
 from geopy import Point
 from geopy.distance import distance, VincentyDistance
 from geopy import distance
 from geopy.distance import vincenty
 from geographiclib.geodesic import Geodesic
-import math
 
 def getDestinationCoordinateWith(lat, lon, bearing, changeBearing, destMiles):
     startPoint = Point(lat, lon)
