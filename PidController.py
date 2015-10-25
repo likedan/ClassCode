@@ -12,8 +12,8 @@ class PidController:
         sf.Kd = d
         sf.deri_num = 0.0
         sf.inte_num = 0.0
-        sf.inte_min = -100.0
-        sf.inte_max = 100.0
+        sf.inte_min = -10.0
+        sf.inte_max = 10.0
         sf.set_point = 0.0
         sf.error = 0.0
 
@@ -60,7 +60,7 @@ class PidController:
         :return: PID value
         '''
 
-        sf.error = sf.set_point - process_val
+        sf.error = process_val - sf.set_point
 
         sf.inte_num += sf.error
         if(sf.inte_num < sf.inte_min):

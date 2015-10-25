@@ -12,6 +12,7 @@ import time
 import os
 import sys
 from subprocess import call
+from PidController import PidController
 
 _deg2met = 110977.			# meters in one degree latitude
 
@@ -21,6 +22,7 @@ class Pilot (Ckpt.Ckpt):			# subclass of the class Ckpt in the file Ckpt
 		super().__init__('HW4a', True, False)
 		self.db = database
 		self.stayTime = 0
+		self.eleController = PidController(0.1, 0.001, 0.001)
 		print("new Pilot")
 
 	def setRadiusAndAngle(self, radius, angle):
@@ -43,10 +45,12 @@ class Pilot (Ckpt.Ckpt):			# subclass of the class Ckpt in the file Ckpt
 			self.headingDiff = calculation.getHeadingDifference(flyData.latitude, flyData.longitude, self.center_point, self.dest_radius, flyData.head)
 			self.altitudeDiff = self.dest_altitude - flyData.altitude
 			self.speedDiff = self.dest_speed - flyData.kias
-			# print("traj: ",self.trajecDiff)
-			# print("head: ",self.headingDiff)
-			# print("speed: ",self.speedDiff)
-			# print("altitude: ",self.altitudeDiff)
+			print("pitch: ",flyData.pitch)
+			print("roll: ",flyData.roll)
+
+			pidVal = self.eleController.calculatePid(self.altitudeDiff)
+			command.elevator = pidVal / 50
+
 			if hasattr(self, 'currentState'):
 				self.prevState = self.currentState
 				self.stayTime = self.stayTime + 1
@@ -55,16 +59,25 @@ class Pilot (Ckpt.Ckpt):			# subclass of the class Ckpt in the file Ckpt
 			self.currentState = state.State(self.dest_radius, self.speedDiff, self.altitudeDiff, self.headingDiff, self.trajecDiff, self.db)
 			if hasattr(self, 'prevState') and self.prevState.isDifferent(self.currentState):
 				self.prevState.recordAction(self.currentAction, str(self.currentState.objectID), self.stayTime)
-				print("different State")
 				self.stayTime = 0
+				print(self.currentState.calculateAward())
 				self.currentAction = self.currentState.chooseAnAction()
-				command.throttle = self.currentAction[0] / 5
-				command.rudder = self.currentAction[1] / 5
-			if abs(self.currentState.trajectoryDif) > 25 or abs(self.currentState.headingDif) > 25 or abs(self.currentState.altitudeDif) > 25 or abs(self.currentState.speedDif) > 25:
-				self.fg.exitFgfs()
-				os.environ['probe1'] = 'endblablabla'
-				os.system('echo $probe1')
-				call(["sudo", "killall", "Python"])
+				# command.aileron = self.currentAction[0] / 10
+
+
+			if abs(self.currentState.trajectoryDif) > 50 or abs(self.currentState.headingDif) > 50 or abs(self.currentState.altitudeDif) > 50 or abs(self.currentState.speedDif) > 50:
+				if abs(self.currentState.trajectoryDif) > 50:
+					print("traj Died")
+				elif abs(self.currentState.headingDif) > 50:
+					print("head Died")
+				elif abs(self.currentState.altitudeDif) > 50:
+					print("alt Died")
+				else:
+					print("speed Died")
+				# self.fg.exitFgfs()
+				# os.environ['probe1'] = 'endblablabla'
+				# os.system('echo $probe1')
+				# call(["sudo", "killall", "Python"])
 				# os.kill(0, signal.SIGINT)
 				# bashCommand = "python start."
 				# process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
