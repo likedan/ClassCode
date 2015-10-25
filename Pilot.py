@@ -31,7 +31,6 @@ class Pilot (Ckpt.Ckpt):			# subclass of the class Ckpt in the file Ckpt
 		# calculate the dest location
 		if flyData.running and not hasattr(self, 'dest_point'):
 			points = calculation.getDestinationCoordinateWith(flyData.latitude, flyData.longitude, flyData.head, self.dest_angle, self.dest_radius)
-			print(points)
 			self.dest_point = points[0]
 			self.center_point = points[1]
 			self.dest_speed = flyData.kias

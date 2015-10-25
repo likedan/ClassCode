@@ -46,11 +46,9 @@ class State:
                 else:
                     theAction[nextStateID].append(timeInPrevState)
         self.db.saveState(diction)
-        print(nextStateID, " ," ,action ," recorded")
 
     def chooseAnAction(self):
         diction = self.db.getStateDict(self.objectID)
-        print(diction)
         if not "actions" in diction:
             return (0,0)
         else:
@@ -61,9 +59,19 @@ class State:
             return self.chooseActionFromPolicy(dictionM)
 
     def chooseActionFromPolicy(self, diction):
+
+        # if len(diction > 10):
+        #     if 7 < randint(0, 10):
+        #         throttle = randint(0, 5)
+        #         ruddle = randint(-5, 5)
+        #     else:
+        #         for id in diction.keys():
+        #             self.db.getStateDict(id)
+        # else:
         throttle = randint(0, 5)
         ruddle = randint(-5, 5)
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        print(diction)
         # print(diction)
         # while(throttle <= 5):
         #     while (ruddle <= 5):
