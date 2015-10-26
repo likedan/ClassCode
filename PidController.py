@@ -79,7 +79,6 @@ class PidController:
         :param process_val: The value that we want to achieve
         :return: PID value
         '''
-
         sf.error = process_val - sf.set_point
 
         sf.inte_num += sf.error
@@ -96,15 +95,11 @@ class PidController:
             ret_val = sf.Kp * sf.error + sf.Kd * (sf.error - sf.deri_num) + sf.Ki * sf.inte_num
             sf.deri_num = sf.error
             if(sf.error < 0):
-                print('Turn left. sf.error > 180, sf.error < 0. Angle PID {:.3f} error - return val {:.3f}'.format(sf.error, ret_val))
                 return ret_val
             else:
-                print('Turn right. sf.error > 180, sf.error > 0. Angle PID {:.3f} error - return val {:.3f}'.format(sf.error, ret_val))
                 return ret_val
         else:
             if(sf.error > 0):
-                print('Turn left. sf.error < 180, sf.error > 0. Angle PID {:.3f} error - return val {:.3f}'.format(sf.error, -ret_val))
                 return -ret_val
             else:
-                print('Turn right. Angle PID {:.3f} error - return val {:.3f}'.format(sf.error, -ret_val))
                 return -ret_val
