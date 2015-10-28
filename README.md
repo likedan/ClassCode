@@ -1,5 +1,5 @@
 # View
 
-<img src="showup2.gif" width="320" height="550"/>
+<img src="showup2.gif" width="800" height="550"/>
 
 
