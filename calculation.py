@@ -6,6 +6,10 @@ from geopy import distance
 from geopy.distance import vincenty
 from geographiclib.geodesic import Geodesic
 
+def getDesiredHeadingToApproachTheTower(lat, lon):
+    supposed_bearing = getBearingBetweenTwoPoints(lat, lon, 37.61703, -122.383585)
+    return supposed_bearing
+
 def getDestinationCoordinateWith(lat, lon, bearing, changeBearing, destMiles):
     negative = False
     if destMiles < 0:
@@ -27,6 +31,9 @@ def getTrajectoryDifference(lat, lon, centerPoint, destMiles):
 def getDistanceDifference(lat, lon, centerPoint):
     return distance.distance(Point(lat, lon), centerPoint).miles
 
+def getDistance(lat, lon, lat1, lon1):
+    return distance.distance(Point(lat, lon), Point(lat1, lon1)).miles
+
 def getHeadingDifference(lat, lon, centerPoint, destMiles, currentHeading):
     circleCenterDirection = 0
     if destMiles < 0:
@@ -47,7 +54,6 @@ def getBearingBetweenTwoPoints(lat1, lon1, lat2, lon2):
 	b = math.atan2(math.sin(dlon)*math.cos(rlat2),math.cos(rlat1)*math.sin(rlat2)-math.sin(rlat1)*math.cos(rlat2)*math.cos(dlon)) # bearing calc
 	bd = math.degrees(b)
 	br,bn = divmod(bd+360,360) # the bearing remainder and final bearing
-
 	return bn
 
 def getDegree(degree):

@@ -3,10 +3,11 @@
 import math
 from geopy import Point
 import calculation as calculation
-import Ckpt as Ckpt
-import Utilities as Utilities
 import time
 from PidController import PidController
+import Ckpt as Ckpt
+import Utilities as Utilities
+
 
 _deg2met = 110977.			# meters in one degree latitude
 

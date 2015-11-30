@@ -3,7 +3,7 @@
 import imp, sys
 def rel():
 	imp.reload(sys.modules['Utilities'])
-
+	
 import os.path
 import struct, math, pickle
 from tkinter import filedialog as tkf
@@ -21,8 +21,8 @@ if os.path.basename(_CCDir) != 'ClassCode':
 	_STDir = _CCDir
 	_CCDir = os.path.join(_STDir, 'ClassCode')
 	if not os.path.isdir(_CCDir): raise IOError('No ClassCode in {}'.format(os.path.dirname(_STDir)))
-
-# latitude differences, measured along a longitude line and in longitude degrees are constant,
+	
+# latitude differences, measured along a longitude line and in longitude degrees are constant, 
 # but longitude differences, measured along a latitude and in latitude degrees are shorter in higher lats
 # multiply by _lat2lon to convert measurements along a latitude line into the same distance measured along a longitude line
 
@@ -31,8 +31,8 @@ _lat2lon = 0.794				# multiply degrees along longitude * this to get equiv dist 
 _eps = 1e-10						# epsilon to use for zero w/ roundoff errors
 
 class FltData:
-
-	datStrct = struct.Struct('>ffffffff?')					# structure to decode flight data packet
+	
+	datStrct = struct.Struct('>ffffffff?f')					# structure to decode flight data packet
 	datPktLen = struct.calcsize(datStrct.format)		# correct packet length
 
 	@staticmethod
@@ -48,17 +48,24 @@ class FltData:
 		sf.pitch = 0.0			# lateral axis up / down angle in degrees
 		sf.roll = 0.0			# degree rotation about the aircraft's longitudinal axis
 		sf.latitude = 0.0		# north latitude position
-		sf.longitude = 0.0		# west longitude position (negative)
+		sf.longitude = 0.0	# west longitude position (negative)
 		sf.time = 0.0			# simulator clock time of this observation
-		sf.running = False		# Boolean for engine running
+		sf.running = False	# Boolean for engine running
+		#sf.vspeed = 0.0			# Vertical speed
+		sf.rpm = 0.0			# Engine rpm
+		#sf.xaccel = 0.0
+		#sf.yaccel = 0.0
+		#sf.zaccel = 0.0
 
 	def getFData(sf):
 		'''convenience function for easy access, returning all data in a tuple'''
-		return sf.kias, sf.altitude, sf.head, sf.pitch, sf.roll, sf.latitude, sf.longitude, sf.time, sf.running
+		# return sf.kias, sf.altitude, sf.head, sf.pitch, sf.roll, sf.latitude, sf.longitude, sf.time, sf.running, sf.vspeed, sf.rpm, sf.xaccel, sf.yaccel, sf.zaccel
+		return sf.kias, sf.altitude, sf.head, sf.pitch, sf.roll, sf.latitude, sf.longitude, sf.time, sf.running, sf.rpm
 
 	def decFData(sf,pkt):
 		'''unpack an fgfs data packet into data fields'''
-		sf.kias, sf.altitude, sf.head, sf.pitch, sf.roll, sf.latitude, sf.longitude, sf.time, sf.running =  sf.datStrct.unpack(pkt)
+		# sf.kias, sf.altitude, sf.head, sf.pitch, sf.roll, sf.latitude, sf.longitude, sf.time, sf.running, sf.vspeed, sf.rpm, sf.xaccel, sf.yaccel, sf.zaccel =  sf.datStrct.unpack(pkt)
+		sf.kias, sf.altitude, sf.head, sf.pitch, sf.roll, sf.latitude, sf.longitude, sf.time, sf.running, sf.rpm =  sf.datStrct.unpack(pkt)
 
 class CmdData:
 
@@ -78,7 +85,7 @@ class CmdData:
 		sf.mixture = 0.0
 		sf.magnitos = 3
 		sf.starter = False
-
+		
 	def encCmds(sf,ckpt):
 		'''Update the display and return a packet reflecting the current command values'''
 		if ckpt.guiP:
@@ -86,7 +93,7 @@ class CmdData:
 			ckpt.thrS.set(sf.throttle)
 			ckpt.mixS.set(sf.mixture)
 		return sf.cmdStrct.pack(sf.aileron, sf.elevator, sf.rudder, sf.throttle, sf.mixture, sf.magnitos, sf.starter)
-
+		
 def getWayPts(tsk,ccDir='notSet',fnam='notSet'):
 	'''read in a waypoints file, return the list of (lat, long, heading) points'''
 	if ccDir == 'notSet': ccDir = _CCDir
@@ -102,7 +109,7 @@ def getWayPts(tsk,ccDir='notSet',fnam='notSet'):
 			pts.append([float(num.strip()) for num in pt.split(',')])
 	print('{}\n{}:  {} pts'.format(wpFilNam, fileTitle, len(pts)))
 	return pts
-
+	
 def getPathData(fnam='flt.pkl',crashed=False):
 	'''return a numpy array of the 9 flight data values and 7 command data values from the pickle file of the flight path and command path'''
 	with open(fnam, 'rb') as fd:
@@ -133,7 +140,7 @@ def readFP(fltFil='LastFlight.pkl'):
 	path = getPathData(fltFil)
 	return path[:8].T
 
-
+	
 #~ def readFpbOLD(fltFil='LastFlight.fpb'):
 	#~ '''read in a Flight Path Binary file; each packed point contains:
 	#~ kias, altitude, head, pitch, roll, latitude, longitude, time, runningP
@@ -148,7 +155,7 @@ def readFP(fltFil='LastFlight.pkl'):
 			#~ if pt == b'': break
 			#~ flt.append(datStrct.unpack(pt)[:-1])
 	#~ return flt
-
+	
 def dist(lli,llf):
 	'''return the distance in latitude dgrees from lat/lon lli to lat/lon llf'''
 	dLat = llf[0] - lli[0]
@@ -157,7 +164,7 @@ def dist(lli,llf):
 	return dst
 
 # top level function for grading a flightpath against a set of waypoints
-# given a packed binary flightpath file
+# given a packed binary flightpath file 
 #		a sequence flight data packets of kias, altitude, head, pitch, roll, latitude, longitude, time, runningP
 #		and a weighpoint file .wpts; see getWayPts
 # return the total minimum distances of the path to the waypoints, the time duration of the critical portion of the path, the number of times the plane tipped, and a vector of the minimal distances to the individual waypoints
@@ -194,6 +201,7 @@ def grade(fltFil='notSet',ret=True):
 	fltPitRol = np.abs(fltPath[strtIdx : lstIdx, 3 : 5])		# from flight path get abs pitch & roll
 	tipd = np.logical_and(fltPitRol[:, 0] > 5., fltPitRol[:,1] > 5.).sum()	# Number pitch/roll > 5 deg.
 	if tipd > 0: score += 5.
+	print('WptErrs: {}, DurMin: {}, spdVar: {}'.format(wptErrs, durMin, spdVar))
 	print('Taxiing score, interval {:} to {:}: {:.3f}'.format(strtIdx, lstIdx, score))
 	if ret: return score, wptErrs, spdVar, durMin, tipd, totDst, wpidxs, wpdsts
 
@@ -207,7 +215,7 @@ def dsts2wps(wps,fltPath):
 		wptDsts.append(dst)
 #		wptDsts.append(minDist2Fp(wp, fltPath))
 	return np.array(wptIdxs), np.array(wptDsts)
-
+	
 def minDist2Fp(wp, fp):
 	'''return the left index of the minimum distance segment in FlightPath fp to waypoint wp and its distance'''
 	nwp = np.array(wp[:2])
@@ -236,7 +244,7 @@ def pt2lne(pt0,pt1,pt2):
 	d01 = np.sqrt(e01)
 	u01 = v01 / d01					# unit vec along line segment from pt0 to pt1
 	proj02on01 = u01.dot(v02)
-	if proj02on01 < 0. or proj02on01 > d01:
+	if proj02on01 < 0. or proj02on01 > d01:	
 		return minDirect				# point projects outside of segment
 	e2lne = e02 - proj02on01 * proj02on01	# inside seg so use projected dist
 	if abs(e2lne) < 1e-10: return 0.0

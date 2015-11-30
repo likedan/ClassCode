@@ -59,7 +59,39 @@
     <type>bool</type>
     <node>/engines/engine/running</node>
    </chunk>
- 
+
+   <chunk>
+    <name>rpm</name>
+    <type>float</type>
+    <node>/engines/engine[0]/rpm</node>
+   </chunk>
+
+<!-- These are used by exploring pilot
+  <chunk>
+    <name>vspeed</name>
+    <type>float</type>
+    <node>/velocities/vertical-speed-fps</node>
+   </chunk>
+
+   <chunk>
+    <name>xaccel</name>
+    <type>float</type>
+    <node>/accelerations/pilot/x-accel-fps_sec</node>
+   </chunk>
+
+   <chunk>
+    <name>yaccel</name>
+    <type>float</type>
+    <node>/accelerations/pilot/y-accel-fps_sec</node>
+   </chunk>
+
+   <chunk>
+    <name>zaccel</name>
+    <type>float</type>
+    <node>/accelerations/pilot/z-accel-fps_sec</node>
+   </chunk>
+-->
+
   </output>
  
 
