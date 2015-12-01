@@ -43,7 +43,14 @@ class ACTester (Ckpt.Ckpt):			# subclass of the class Ckpt in the file Ckpt
             self.canAdd = True
 
         if self.passTower >= 2:
+            if not hasattr(self,"ti"):
+                self.ti = fDat.time
+                self.ac.PLAN(fDat, 500, 10, 200)
+
+            if fDat.time - self.ti > 3:
+                self.fg.exitFgfs()
             self.ac.DO(fDat, fCmd)
+
         else:
             print("diffff   ", diff)
             print("disttttt   ", dist)
@@ -56,29 +63,46 @@ class ACTester (Ckpt.Ckpt):			# subclass of the class Ckpt in the file Ckpt
                     self.approaching = False
                     self.distE = False
                     self.fin = False
+                    self.up = False
                 else:
                     if not self.approaching:
                         if not self.circling:
                             if fDat.altitude <= 500:
-                                self.PLAN(1000000, 10)
-                                self.DO(fDat, fCmd, False, 0.6)
+                                if not self.up:
+                                    self.ac.PLAN(fDat, 400, 2, 400)
+                                    self.up = True
                                 if dist > 1.5:
                                     self.distEnough = True
                                 if self.distEnough:
                                     self.circling = True
                                     if calculation.getDegree(desiredHeading - currentHeading) >= 180:
-                                        self.ang = -7000
+                                        self.ang = -9000
                                     else:
-                                        self.ang = 7000
+                                        self.ang = 9000
                                     self.PLAN(self.ang, 10)
                                     self.returning = False
                                     print("start circling")
-                            else:
                                 self.ac.DO(fDat, fCmd)
+
+                            else:
+                                if self.up:
+                                    if dist > 1.5:
+                                        self.distEnough = True
+                                    if self.distEnough:
+                                        self.circling = True
+                                        if calculation.getDegree(desiredHeading - currentHeading) >= 180:
+                                            self.ang = -9000
+                                        else:
+                                            self.ang = 9000
+                                        self.PLAN(self.ang, 10)
+                                        self.returning = False
+                                        print("start circling")
+                                self.ac.DO(fDat, fCmd)
+
 
                         else:
                             print("circl")
-                            if self.fin and fDat.altitude < 220:
+                            if self.fin and fDat.altitude < 230:
                                 self.ac.DO(fDat, fCmd)
                             else:
                                 self.fin = False
@@ -86,7 +110,16 @@ class ACTester (Ckpt.Ckpt):			# subclass of the class Ckpt in the file Ckpt
                                     if not self.returning:
                                         self.PLAN(self.ang, 10)
 
-                                if not self.returning and diff <= 5:
+                                if not self.returning and diff <= 6 and self.passTower == 0:
+                                    self.returning = True
+                                    self.circling = False
+                                    self.approaching = True
+                                    desLat = 250 - fDat.altitude
+                                    self.ac.PLAN(fDat, desLat, -8, 200)
+                                    self.buzzing = False
+                                    self.lastPositive = False
+
+                                if not self.returning and diff <= 15 and self.passTower == 1:
                                     self.returning = True
                                     self.circling = False
                                     self.approaching = True
@@ -106,9 +139,9 @@ class ACTester (Ckpt.Ckpt):			# subclass of the class Ckpt in the file Ckpt
                             self.ac.DO(fDat, fCmd)
                         elif diff >= 30:
                             if calculation.getDegree(desiredHeading - currentHeading) >= 180:
-                                self.ang = -7000
+                                self.ang = -6000
                             else:
-                                self.ang = 7000
+                                self.ang = 6000
                             self.PLAN(self.ang, 10)
                             self.circling = True
                             self.approaching = False
@@ -118,7 +151,7 @@ class ACTester (Ckpt.Ckpt):			# subclass of the class Ckpt in the file Ckpt
                             self.fin = True
                         else:
                             if self.ac.DO(fDat, fCmd) == "DONE":
-                                self.ac.PLAN(fDat, 20, 0.5, 200)
+                                self.ac.PLAN(fDat, 20, 1, 200)
 
 
 
