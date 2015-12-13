@@ -7,12 +7,13 @@ import AC
 import random, pickle
 import imp, sys, math
 import time
+import calculation as calculation
 from PidController import PidController
 
 def rel():
     imp.reload(sys.modules['ACTester'])
 
-class ACTester (Ckpt.Ckpt):			# subclass of the class Ckpt in the file Ckpt
+class Landing (Ckpt.Ckpt):			# subclass of the class Ckpt in the file Ckpt
 
     def __init__(self, tsk = 'HW4a', rc = False, gui = False):
         super().__init__(tsk, rc, gui)
@@ -21,27 +22,131 @@ class ACTester (Ckpt.Ckpt):			# subclass of the class Ckpt in the file Ckpt
         self.distEnough = False
         self.eleController = PidController(0.1, 0.001, 0.001)
         self.angleController = PidController(0.1, 0.001, 0.001)
-        self.angleController.setPoint(0)
-        self.increasing = True
-
+        self.prevDist = 100
+        self.turningS = False
     def ai(self, fDat, fCmd):
+# dest lat:  37.613555908203125   long:  -122.35719299316406
+# landing point lat:  37.62527084350586   long:  -122.38663482666016
+# modifying point lat:  37.63372802734375   long:  -122.40889739990234
+# turning point lat:  37.643863677978516   long:  -122.43621063232422
+        print("lat: ", fDat.latitude, "  long: ", fDat.longitude)
 
-        angleValue = self.angleController.calculateAngelPid(fDat.roll)
-        angleValue = angleValue
-        if angleValue > 0.3:
-            angleValue = 0.3
-        elif angleValue < -0.3:
-            angleValue = -0.3
-        fCmd.aileron = angleValue / 4
+        if not self.turningS:
+            print("turningS")
+            dist = calculation.getDistance(fDat.latitude,fDat.longitude, 37.643863677978516, -122.43621063232422)
+            desiredHeading = calculation.getDesiredHeadingToApproachTurningPoint(fDat.latitude,fDat.longitude)
+            currentHeading = fDat.head
+            diff = abs(desiredHeading - currentHeading)
+            if diff > 3:
+                if calculation.getDegree(desiredHeading - currentHeading) >= 180:
+                    self.ang = -8000
+                else:
+                    self.ang = 8000
+                self.PLAN(self.ang, 10)
+                self.turningS = True
+                self.turningP = False
+            else:
+                self.turningS = True
+                self.turningP = True
+                self.toLevel = False
+                if fDat.altitude > 800:
+                    destAlt = 800 - fDat.altitude
+                    self.ac.PLAN(fDat, destAlt, -10, 300)
+                    self.upping = False
+                else:
+                    self.ac.PLAN(fDat, 500, 1.5, 300)
+                    self.upping = True
 
-        fCmd.elevator = -0.6
+        elif not self.turningP:
+            dist = calculation.getDistance(fDat.latitude,fDat.longitude, 37.643863677978516, -122.43621063232422)
+            desiredHeading = calculation.getDesiredHeadingToApproachTurningPoint(fDat.latitude,fDat.longitude)
+            currentHeading = fDat.head
+            print("turningP")
+            if self.DO(fDat, fCmd, False, 1) == "DONE":
+                self.PLAN(self.ang, 10)
+            diff = abs(desiredHeading - currentHeading)
+            if diff > 180:
+                diff = 360 - diff
+            if diff <= 10:
+                self.toLevel = False
+                self.turningP = True
+                if fDat.altitude > 800:
+                    destAlt = 800 - fDat.altitude
+                    self.ac.PLAN(fDat, destAlt, -10, 300)
+                    self.upping = False
+                else:
+                    self.ac.PLAN(fDat, 500, 1.5, 300)
+                    self.upping = True
 
-        fCmd.throttle = 1
+        elif not self.toLevel:
+            print("toLevel")
+            self.ac.DO(fDat, fCmd)
+            if fDat.altitude < 800 and not self.upping:
+                self.ac.PLAN(fDat, 500, 1.5, 300)
+            dist = calculation.getDistance(fDat.latitude,fDat.longitude, 37.643863677978516, -122.43621063232422)
+            if self.prevDist + 0.3 < dist:
+                self.finTurning = False
+                self.toLevel = True
+                self.ang = -6000
+                self.PLAN(self.ang, 10)
 
-        self.pitch = 0
-        if fDat.pitch > self.pitch:
-            self.increasin
-        print(fDat.pitch)
+            if dist < self.prevDist:
+                self.prevDist = dist
+            print("dist",dist)
+
+        elif not self.finTurning:
+            print("finTurning")
+            desiredHeading = calculation.getDesiredHeadingToApproachModifyingPoint(fDat.latitude,fDat.longitude)
+            currentHeading = fDat.head
+            diff = abs(desiredHeading - currentHeading)
+            if diff > 180:
+                diff = 360 - diff
+            print("diff",diff)
+
+            if self.DO(fDat, fCmd, False, 1) == "DONE":
+                self.PLAN(self.ang, 10)
+
+            if diff <= 5:
+                self.finTurning = True
+                self.reachModif = False
+                self.ac.PLAN(fDat, -300, -7, 300)
+                self.prevDist = 100
+
+        elif not self.reachModif:
+            print("reachModif")
+            self.ac.DO(fDat, fCmd)
+            desiredHeading = calculation.getDesiredHeadingToApproachLandingPoint(fDat.latitude,fDat.longitude)
+            currentHeading = fDat.head
+            dist = calculation.getDistance(fDat.latitude,fDat.longitude, 37.63372802734375, -122.40889739990234)
+            if dist < 0.8:
+                self.reachModif = True
+                self.turnLanding = False
+
+                if calculation.getDegree(desiredHeading - currentHeading) <= 180:
+                    self.ang = 10000
+                else:
+                    self.ang = -10000
+                self.PLAN(self.ang, 10)
+            print("dist", dist)
+            print("ang",calculation.getDegree(desiredHeading - currentHeading))
+        elif not self.turnLanding:
+            print("turnLanding")
+            desiredHeading = calculation.getDesiredHeadingToApproachLandingPoint(fDat.latitude,fDat.longitude)
+            currentHeading = fDat.head
+            diff = abs(desiredHeading - currentHeading)
+            print("diff",diff)
+            if self.DO(fDat, fCmd, False, 1) == "DONE":
+                self.PLAN(self.ang, 10)
+
+            if diff <= 5:
+                self.turnLanding = True
+                self.goLanding = False
+                desLat = 0 - fDat.altitude
+                self.ac.PLAN(fDat, desLat, -10, 300)
+        elif not self.goLanding:
+            print("goLanding")
+            fCmd.starter = False
+            self.ac.DO(fDat, fCmd)
         # if self.canAdd and dist < 0.25:
         #     self.passTower = self.passTower + 1
         #     self.canAdd = False<=
@@ -161,8 +266,8 @@ class ACTester (Ckpt.Ckpt):			# subclass of the class Ckpt in the file Ckpt
         #                         self.ac.PLAN(fDat, 20, 1, 200)
 
 
-
     def PLAN(self, radius, angle):
+
         self.returning = False
         self.turning = True
         self.dest_angle = angle
@@ -172,36 +277,26 @@ class ACTester (Ckpt.Ckpt):			# subclass of the class Ckpt in the file Ckpt
         self.prevDiff = self.dest_radius * 3
         if radius < 0:
             self.wanted_roll = -self.wanted_roll
-        print("radius:  ",self.dest_radius)
+            self.dest_angle = -self.dest_angle
         self.angleController.setPoint(self.wanted_roll)
 
-        if estimatedTrajError > 8:
-            if radius < 0:
-                self.wanted_roll = -8000
-                self.angleController.setPoint(self.wanted_roll)
-            else:
-                self.wanted_roll = 8000
-                self.angleController.setPoint(self.wanted_roll)
-
     def DO(self, flyData, command, turnBack, speed):
-        if flyData.running and not hasattr(self, 'dest_point'):
-            points = calculation.getDestinationCoordinateWith(flyData.latitude, flyData.longitude, flyData.head, self.dest_angle, self.dest_radius)
-            self.dest_point = points[0]
-            self.center_point = points[1]
+        if flyData.running and not hasattr(self, 'dest_head'):
+            self.dest_head = calculation.getDegree(flyData.head + self.dest_angle)
             self.last_altitude = flyData.altitude
             self.last_roll = flyData.roll
-            self.dest_heading = flyData.head
+            command.throttle = 0.6
 
-        if hasattr(self, 'center_point'):
-            self.trajecDiff = calculation.getTrajectoryDifference(flyData.latitude, flyData.longitude, self.center_point, self.dest_radius)
-            self.headingDiff = calculation.getHeadingDifference(flyData.latitude, flyData.longitude, self.center_point, self.dest_radius, flyData.head)
+        if hasattr(self, 'dest_head'):
+            command.throttle = speed
+
             self.altitudeDiff = flyData.altitude - self.last_altitude
             self.last_altitude = flyData.altitude
             print("Roll",flyData.roll)
 
             eleValue = self.eleController.calculatePid(self.altitudeDiff)
-            if eleValue > 0.15:
-                eleValue = 0.15
+            if eleValue > 0.1:
+                eleValue = 0.1
             elif eleValue < 0:
                 eleValue = eleValue - 0.15
             command.elevator = eleValue
@@ -212,57 +307,22 @@ class ACTester (Ckpt.Ckpt):			# subclass of the class Ckpt in the file Ckpt
                 angleValue = 0.3
             elif angleValue < -0.3:
                 angleValue = -0.3
-            command.aileron = angleValue / 4
+            command.aileron = angleValue / 5
 
-            self.currentDiff = calculation.getDistanceDifference(flyData.latitude, flyData.longitude, self.dest_point)
+            currDiff = calculation.getDegree(flyData.head - self.dest_head)
+            if currDiff > 180:
+                currDiff = 360 - currDiff
+            print(currDiff)
 
-            if self.currentDiff > self.prevDiff and self.currentDiff < abs(self.dest_radius) / 4:
-                if not turnBack:
+            if turnBack:
+                if currDiff < 10:
+                    print("finishTurning")
+                    self.angleController.setPoint(0)
+                    self.returning = True
+                    print("diff: ",currDiff)
+
+                if self.returning:
+                    command.aileron = angleValue * 0.4
+
+                if self.returning and abs(flyData.roll) < 2:
                     return "DONE"
-                self.angleController.setPoint(0)
-                self.returning = True
-            self.prevDiff = self.currentDiff
-            if self.returning and abs(flyData.roll) < 2:
-                return "DONE"
-    def DOB(self, flyData, command, turnBack, speed):
-        if flyData.running and not hasattr(self, 'dest_point'):
-            points = calculation.getDestinationCoordinateWith(flyData.latitude, flyData.longitude, flyData.head, self.dest_angle, self.dest_radius)
-            self.dest_point = points[0]
-            self.center_point = points[1]
-            self.last_altitude = flyData.altitude
-            self.last_roll = flyData.roll
-            self.dest_heading = flyData.head
-            command.throttle = 0.6
-
-        if hasattr(self, 'center_point'):
-            self.trajecDiff = calculation.getTrajectoryDifference(flyData.latitude, flyData.longitude, self.center_point, self.dest_radius)
-            self.headingDiff = calculation.getHeadingDifference(flyData.latitude, flyData.longitude, self.center_point, self.dest_radius, flyData.head)
-            self.altitudeDiff = flyData.altitude - self.last_altitude
-            self.last_altitude = flyData.altitude
-            print("Roll",flyData.roll)
-
-            eleValue = self.eleController.calculatePid(self.altitudeDiff)
-            if eleValue > 0.17:
-                eleValue = 0.17
-            elif eleValue < 0:
-                eleValue = eleValue - 0.17
-            command.elevator = eleValue
-
-            angleValue = self.angleController.calculateAngelPid(flyData.roll)
-            angleValue = angleValue
-            if angleValue > 0.12:
-                angleValue = 0.12
-            elif angleValue < -0.12:
-                angleValue = -0.12
-            command.aileron = angleValue
-
-            self.currentDiff = calculation.getDistanceDifference(flyData.latitude, flyData.longitude, self.dest_point)
-
-            if self.currentDiff > self.prevDiff and self.currentDiff < abs(self.dest_radius) / 4:
-                if not turnBack:
-                    return "DONE"
-                self.angleController.setPoint(0)
-                self.returning = True
-            self.prevDiff = self.currentDiff
-            if self.returning and abs(flyData.roll) < 2:
-                return "DONE"

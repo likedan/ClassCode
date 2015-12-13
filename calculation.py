@@ -1,29 +1,21 @@
 import math
-import geopy
-from geopy import Point
-from geopy.distance import distance, VincentyDistance
-from geopy import distance
-from geopy.distance import vincenty
-from geographiclib.geodesic import Geodesic
+
 
 def getDesiredHeadingToApproachTheTower(lat, lon):
     supposed_bearing = getBearingBetweenTwoPoints(lat, lon, 37.61703, -122.383585)
     return supposed_bearing
 
-def getDestinationCoordinateWith(lat, lon, bearing, changeBearing, destMiles):
-    negative = False
-    if destMiles < 0:
-        negative = True
-    destMiles = abs(destMiles)
-    startPoint = Point(lat, lon)
-    circleCenterDirection = 0
-    dest = 0
-    if negative:
-        circleCenterDirection = getDegree(bearing - 90)
-    else:
-        circleCenterDirection = getDegree(bearing + 90)
-    circleCenter = VincentyDistance(miles = destMiles).destination(startPoint, circleCenterDirection)
-    return (VincentyDistance(feet = destMiles).destination(circleCenter, getDegree(circleCenterDirection - 180 + changeBearing)), circleCenter)
+def getDesiredHeadingToApproachTurningPoint(lat, lon):
+    supposed_bearing = getBearingBetweenTwoPoints(lat, lon, 37.643863677978516, -122.43621063232422)
+    return supposed_bearing
+
+def getDesiredHeadingToApproachModifyingPoint(lat, lon):
+    supposed_bearing = getBearingBetweenTwoPoints(lat, lon, 37.63372802734375,  -122.40889739990234)
+    return supposed_bearing
+
+def getDesiredHeadingToApproachLandingPoint(lat, lon):
+    supposed_bearing = getBearingBetweenTwoPoints(lat, lon, 37.613555908203125,  -122.35719299316406)
+    return supposed_bearing
 
 def getTrajectoryDifference(lat, lon, centerPoint, destMiles):
     return distance.distance(Point(lat, lon), centerPoint).miles - destMiles
@@ -32,7 +24,7 @@ def getDistanceDifference(lat, lon, centerPoint):
     return distance.distance(Point(lat, lon), centerPoint).miles
 
 def getDistance(lat, lon, lat1, lon1):
-    return distance.distance(Point(lat, lon), Point(lat1, lon1)).miles
+    return math.sqrt(((lon1 - lon) / 0.794) * ((lon1 - lon) / 0.794) + (lat1 - lat) * (lat1 - lat)) * 50
 
 def getHeadingDifference(lat, lon, centerPoint, destMiles, currentHeading):
     circleCenterDirection = 0
